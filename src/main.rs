@@ -48,8 +48,8 @@ async fn main(spawner: Spawner) {
     let stack = network::init_network(
         spawner,
         network::Mode::Station,
-        env!("WIFI_SSID"),
-        env!("WIFI_PASSPHRASE"),
+        "", //env!("WIFI_SSID"),
+        "", //env!("WIFI_PASSPHRASE"),
         network::Address::Dhcp,
         spi,
         Output::new(p.PIN_23, Level::Low),
@@ -62,7 +62,12 @@ async fn main(spawner: Spawner) {
     let mut socket = TcpSocket::new(stack, &mut rx_buffer, &mut tx_buffer);
     socket.set_timeout(Some(Duration::from_secs(30)));
 
-    let mut dap = dap::dap::Dap::new(Swj::new(), DapLeds::new(), Swo::new(), "VERSION");
+    let mut dap = dap::dap::Dap::new(
+        Swj::new(),
+        DapLeds::new(),
+        Swo::new(),
+        "VERSION"
+    );
 
     loop {
         info!("Waiting for connection");
