@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub const DAP1_PACKET_SIZE: u16 = 64;
 
 #[cfg(feature = "usb-hs")]

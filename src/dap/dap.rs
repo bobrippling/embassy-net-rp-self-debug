@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_attributes)]
 
 mod command;
 mod request;

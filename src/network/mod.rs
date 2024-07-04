@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use cyw43_pio::PioSpi;
 use embassy_executor::Spawner;
 use embassy_net::{Config, DhcpConfig, Ipv4Cidr, Stack, StackResources, StaticConfigV4};

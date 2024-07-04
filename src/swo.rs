@@ -1,3 +1,5 @@
+#![allow(unused_variables)]
+
 use crate::dap;
 
 pub enum Swo {}

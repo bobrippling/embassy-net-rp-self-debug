@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 /// The available errors for SWD.

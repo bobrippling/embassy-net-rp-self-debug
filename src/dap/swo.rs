@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use num_enum::TryFromPrimitive;
 
 #[derive(Copy, Clone, Debug, TryFromPrimitive)]

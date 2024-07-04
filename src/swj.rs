@@ -1,3 +1,5 @@
+#![allow(unused_variables)]
+
 use crate::{dap, jtag::Jtag, swd::Swd};
 
 pub struct Swj();
