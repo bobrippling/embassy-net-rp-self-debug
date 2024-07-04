@@ -372,6 +372,7 @@ where
 
     fn process_swd_sequence(&self, _req: Request, _resp: &mut ResponseWriter) {
         // TODO: Needs implementing
+        todo!()
     }
 
     fn process_swo_transport(&mut self, mut req: Request, resp: &mut ResponseWriter) {
@@ -520,10 +521,12 @@ where
 
     fn process_jtag_configure(&self, _req: Request, _resp: &mut ResponseWriter) {
         // TODO: Implement one day (needs proper JTAG support)
+        todo!()
     }
 
     fn process_jtag_idcode(&self, _req: Request, _resp: &mut ResponseWriter) {
         // TODO: Implement one day (needs proper JTAG support)
+        todo!()
     }
 
     fn process_transfer_configure(&mut self, mut req: Request, resp: &mut ResponseWriter) {
@@ -550,6 +553,7 @@ where
         match &mut self.state {
             State::Jtag(_jtag) => {
                 // TODO: Implement one day.
+                todo!()
             }
             State::Swd(swd) => {
                 // Skip two bytes in resp to reserve space for final status,
@@ -670,6 +674,7 @@ where
         match &mut self.state {
             State::Jtag(_jtag) => {
                 // TODO: Implement one day.
+                todo!()
             }
             State::Swd(swd) => {
                 // Skip three bytes in resp to reserve space for final status,
@@ -752,10 +757,12 @@ where
 
     fn process_execute_commands(&self, _req: Request, _resp: &mut ResponseWriter) {
         // TODO: Implement one day.
+        todo!()
     }
 
     fn process_queue_commands(&self, _req: Request, _resp: &mut ResponseWriter) {
         // TODO: Implement one day.
+        todo!()
     }
 }
 
