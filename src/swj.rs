@@ -55,7 +55,17 @@ impl dap::swj::Dependencies<Swd, Jtag> for Swj {
     }
 
     fn high_impedance_mode(&mut self) {
-        self.swd.dbgforce.modify(|r| r.set_proc1_attach(false));
+        warn!("high impedance mode, untested");
+        //self.swd.dbgforce.modify(|r| r.set_proc1_attach(false));
+        self.swd.dbgforce.modify(|r| {
+            // swdio low
+            r.set_proc1_swdi(false);
+            r.set_proc1_swdo(false);
+        });
+        self.swd.dbgforce.modify(|r| {
+            r.set_proc1_swclk(false);
+        });
+        // nreset floating disabled - jtag only?
     }
 }
 
