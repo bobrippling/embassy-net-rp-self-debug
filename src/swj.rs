@@ -1,4 +1,4 @@
-use defmt::trace;
+use defmt::{debug, trace};
 use embassy_time::{Duration, Ticker};
 
 use crate::{dap, jtag::Jtag, swd::Swd};
@@ -24,7 +24,21 @@ impl dap::swj::Dependencies<Swd, Jtag> for Swj {
     }
 
     async fn process_swj_sequence(&mut self, data: &[u8], mut bits: usize) {
-        self.swd.dbgforce.modify(|r| r.set_proc1_attach(true));
+        let was_attached = self.swd.dbgforce.modify(|r| {
+            let was = r.proc1_attach();
+            r.set_proc1_attach(true);
+            was
+        });
+
+        if !was_attached {
+            // initial attach, do a sequence
+            debug!("initial attach, swj sequence");
+            self.process_swj_sequence(
+                &[0x99, 0xff, 0x24, 0x05, 0x20, 0x00, 0x00],
+                7 * 8
+            );
+            debug!("initial attach, swj sequence done");
+        }
 
         let mut ticker = Ticker::every(Duration::from_ticks(self.swd.half_period_ticks as u64));
         ticker.next().await;
