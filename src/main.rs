@@ -22,7 +22,7 @@ use embassy_rp::pac::SYSCFG;
 use embassy_rp::peripherals::{DMA_CH0, PIN_23, PIN_25, PIO0};
 use embassy_rp::pio::{InterruptHandler, Pio};
 use embassy_rp::{bind_interrupts, clocks};
-use embassy_time::Duration;
+use embassy_time::{Duration, Timer};
 use embedded_io_async::Write;
 use static_cell::StaticCell;
 use swj::Swj;
@@ -95,8 +95,9 @@ async fn core0_task(
 
     loop {
         info!("Waiting for connection");
-        if socket.accept(1234).await.is_err() {
-            warn!("Failed to accept connection");
+        if let Err(e) = socket.accept(1234).await {
+            warn!("Failed to accept connection: {}", e);
+            Timer::after_millis(100).await;
             continue;
         }
 
