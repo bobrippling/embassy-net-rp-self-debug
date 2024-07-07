@@ -32,9 +32,10 @@ impl dap::swj::Dependencies<Swd, Jtag> for Swj {
 
         if !was_attached {
             // initial attach, do a sequence
+            const CORE_SEL: u8 = 0x22; // 0x00 for core0, 0x22 for core1
             debug!("initial attach, swj sequence");
             self.process_swj_sequence(
-                &[0x99, 0xff, 0x24, 0x05, 0x20, 0x00, 0x00],
+                &[0x99, 0xff, 0x24, 0x05, 0x20, CORE_SEL, 0x00],
                 7 * 8
             );
             debug!("initial attach, swj sequence done");
