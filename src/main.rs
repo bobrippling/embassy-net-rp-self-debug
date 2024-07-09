@@ -128,6 +128,9 @@ async fn core0_task(
                 .await;
 
             info!("Responding with {} bytes", n);
+            if n < 10 {
+                info!("  bytes: {}", response_buffer[..n]);
+            }
 
             match socket.write_all(&response_buffer[..n]).await {
                 Ok(()) => {}
@@ -138,9 +141,12 @@ async fn core0_task(
             };
         }
 
+        info!("aborting socket");
         dap.suspend();
         socket.abort();
-        let _ = socket.flush().await;
+        //info!("flushing socket");
+        //let _ = socket.flush().await;
+        //info!("flushed socket");
     }
 }
 

@@ -4,6 +4,7 @@ mod response;
 mod state;
 
 pub use command::*;
+use defmt::{info, error};
 use embassy_time::Timer;
 pub use request::*;
 pub use response::*;
@@ -73,6 +74,8 @@ where
         };
 
         let resp = &mut ResponseWriter::new(req.command, rbuf);
+
+        info!("got req: {}", req);
 
         // defmt::trace!("Dap command: {}", req.command);
 
@@ -347,6 +350,7 @@ where
         let seq = if nbytes <= payload.len() {
             &payload[..nbytes]
         } else {
+            error!("process_swj_sequence, invalid size");
             resp.write_err();
             return;
         };

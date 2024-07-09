@@ -1,5 +1,6 @@
 use super::Command;
 
+#[derive(defmt::Format)]
 pub struct Request<'a> {
     pub command: Command,
     pub data: &'a [u8],
