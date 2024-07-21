@@ -8,6 +8,7 @@ mod network;
 mod swd;
 mod swj;
 mod swo;
+mod boot;
 
 use cortex_m::asm::nop;
 use cyw43_pio::PioSpi;
@@ -40,6 +41,10 @@ static EXECUTOR1: StaticCell<Executor> = StaticCell::new();
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
+    boot::boot()
+}
+
+fn user_main() {
     info!("Start");
     let p = embassy_rp::init(Default::default());
 
