@@ -1,23 +1,21 @@
-pub fn boot() -> ! {
-    static mut _BOOT_STATE: u8 = BootState::A as _;
+#[link_section = ".boot3.data"]
+static mut _BOOT_JOURNAL: u8 = 0;
 
+#[link_section = ".boot3.data"]
+static mut _BOOT_STATE: u8 = 1;
+
+#[link_section = ".boot3.data"]
+pub fn boot() -> ! {
     extern "C" {
         static _stack_start: u8;
-        static _boot_ab_a: u8;
-        static _boot_ab_b: u8;
     }
     let stack = Symbol(unsafe { &_stack_start });
 
-    let boot_state: BootState = unsafe { _BOOT_STATE }
-        .try_into()
-        .expect("invalid boot state");
-
-    let reset_code = Symbol(match boot_state {
-        BootState::A => unsafe { &_boot_ab_a }
-        BootState::B => unsafe { &_boot_ab_b }
-    });
-
     unsafe {
+        assert!(_BOOT_JOURNAL == _BOOT_STATE, "unflashed or interrupt flash, refusing to boot");
+
+        // we now have a valid section of user code, jump to it
+
         // from embassy-boot-rp
         // TODO
         // #[allow(unused_mut)]
@@ -26,8 +24,11 @@ pub fn boot() -> ! {
         // p.SCB.invalidate_icache();
         // p.SCB.vtor.write(start);
 
+        let stack = Symbol(&_stack_start);
+        let user_code = Symbol(&crate::user_main as *const _ as *const _);
+
         cortex_m::asm::bootload([
-            reset_code.as_u32(),
+            user_code.as_u32(),
             stack.as_u32(),
         ].as_ptr())
     }
