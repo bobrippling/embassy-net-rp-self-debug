@@ -1,5 +1,6 @@
 [target.'cfg(all(target_arch = "arm", target_os = "none"))']
-runner = "probe-rs run --chip RP2040  --protocol swd"
+#runner = "probe-rs run --chip RP2040_CORE0 --protocol swd --no-location"
+runner = "../probe-rs/target/debug/probe-rs run --chip RP2040_CORE0 --protocol swd --no-location"
 
 rustflags = [
   "-C", "linker=flip-link",

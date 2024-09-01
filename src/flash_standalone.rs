@@ -52,26 +52,40 @@ fn ipc(what: IpcWhat, regs: &[usize; 3]) {
     let ipc = unsafe { &mut *IPC };
 
     ipc.regs.copy_from_slice(regs);
-    ipc.what.store(what as u8, Ordering::Release);
+    ipc.what.store(what as u8, Ordering::SeqCst);
 }
 
 fn ipc_wait() -> ! {
     let ipc = unsafe { &*IPC };
 
-    while ipc.what.load(Ordering::Relaxed) > 0 {
+    while ipc.what.load(Ordering::SeqCst) > 0 {
+        /*unsafe {
+            core::arch::asm!("nop", options(nomem, nostack, preserves_flags)); // no deps
+            // for some reason this was causing the loop to become infinite
+        }*/
     }
 
-    halt()
+    let exit_code = 0;
+    halt(exit_code)
 }
 
-fn halt() -> ! {
+fn halt(exit_code: usize) -> ! {
     unsafe {
         core::arch::asm!(
-            //"1: wfi\nb 1b",
-            //"1: bkpt\nb 1b",
-            "1: trap\nb 1b",
-            options(noreturn, nomem, nostack),
-        )
+            "",
+            in("r0") exit_code,
+        );
+
+        //asm!("bkpt", options(nomem, nostack, preserves_flags));
+        core::arch::asm!("udf #0", options(noreturn, nomem, nostack, preserves_flags));
+
+        //core::arch::asm!(
+        //    //"1: wfi\nb 1b",
+        //    //"1: bkpt\nb 1b",
+        //    "1: trap\nb 1b",
+        //    in("r0") exit_code,
+        //    options(noreturn, nomem, nostack),
+        //)
     }
 }
 

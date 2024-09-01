@@ -59,5 +59,13 @@ pub fn handle_pending_flash() {
         }
     }
 
-    ipc.what.store(0, Ordering::Relaxed);
+    ipc.what.store(0, Ordering::SeqCst);
+
+    // // can't halt, force it
+    // let psm = pac::PSM;
+    // psm.frce_off().modify(|w| w.set_proc1(true));
+    // while !psm.frce_off().read().proc1() {
+    //     cortex_m::asm::nop();
+    // }
+    // psm.frce_off().modify(|w| w.set_proc1(false));
 }
