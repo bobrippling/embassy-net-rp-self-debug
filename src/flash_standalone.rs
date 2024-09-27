@@ -2,6 +2,7 @@
 #![no_main]
 
 use core::sync::atomic::{AtomicU8, Ordering};
+use core::ptr::NonNull;
 
 #[repr(C)]
 pub enum Operation {
@@ -49,7 +50,7 @@ struct Ipc {
 // from RP2040.yaml, we should live in the given memory range along with the block of memory to flash,
 // but not our stack, which lives in core1 stack's zone
 // FIXME: no hardcoding
-static mut IPC: Option<*mut Ipc> = None;
+static mut IPC: Option<NonNull<Ipc>> = None;
 
 #[link_section = ".text"]
 fn ipc(what: IpcWhat, regs: &[usize; 3]) {
@@ -127,17 +128,35 @@ fn erase_sector(address: usize) -> ! {
 
 unsafe fn get_ipc() -> &'static mut Ipc {
     unsafe {
-        &mut **IPC.get_or_insert_with(scan_mem_for_ipc)
+        IPC.get_or_insert_with(scan_mem_for_ipc).as_mut()
     }
 }
 
-fn scan_mem_for_ipc() -> *mut Ipc {
+fn scan_mem_for_ipc() -> NonNull<Ipc> {
     let start = 0x20000000;
     let end = 0x20042000;
 
-    let target_bytes = b"SELFDBG_SIG_749\0"; // FIXME: needs reloc/loader
+    let mut target_bytes: [u8; 16] = [0; 16];
 
-    return find(start, end, target_bytes) as _;
+    target_bytes[0] = b'S';
+    target_bytes[1] = b'E';
+    target_bytes[2] = b'L';
+    target_bytes[3] = b'F';
+    target_bytes[4] = b'D';
+    target_bytes[5] = b'B';
+    target_bytes[6] = b'G';
+    target_bytes[7] = b'_';
+    target_bytes[8] = b'S';
+    target_bytes[9] = b'I';
+    target_bytes[10] = b'G';
+    target_bytes[11] = b'_';
+    target_bytes[12] = b'7';
+    target_bytes[13] = b'4';
+    target_bytes[14] = b'9';
+
+    return unsafe {
+        NonNull::new_unchecked(find(start, end, &target_bytes) as _)
+    };
 
     fn find(start: usize, end: usize, target: &[u8]) -> usize {
         for ptr in start..end {
@@ -145,7 +164,7 @@ fn scan_mem_for_ipc() -> *mut Ipc {
                 core::slice::from_raw_parts(ptr as *const u8, target.len())
             };
 
-            if candidate == target {
+            if candidate == target { // FIXME: calls memcmp()
                 return ptr;
             }
         }

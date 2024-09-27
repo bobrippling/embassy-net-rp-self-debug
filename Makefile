@@ -5,7 +5,7 @@ OBJCOPY = ${SYSROOT_BIN}/llvm-objcopy
 LD = ${SYSROOT_BIN}/gcc-ld/ld.lld
 
 OPT = -C opt-level=3
-RUSTC_FLAGS = --crate-type=lib -C codegen-units=1 ${OPT} -C relocation-model=static
+RUSTC_FLAGS = --crate-type=lib -C codegen-units=1 ${OPT} -C relocation-model=pic
 
 .PHONY: all clean
 
