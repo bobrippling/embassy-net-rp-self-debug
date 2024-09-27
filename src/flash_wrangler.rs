@@ -3,6 +3,7 @@ use defmt::{info, warn, error};
 
 #[repr(C)]
 pub struct Ipc {
+    header: [u8; 16],
     what: AtomicU8, // IpcWhat,
     regs: [usize; 3],
 }
@@ -10,6 +11,7 @@ pub struct Ipc {
 impl Ipc {
     const fn new() -> Self {
         Self  {
+            header: *b"SELFDBG_SIG_749\0",
             what: AtomicU8::new(0),
             regs: [0; 3],
         }
@@ -24,9 +26,6 @@ enum IpcWhat {
     Erasing,
 }
 
-// reserve the memory address for IPC:
-#[used]
-#[link_section = ".probe_rs_scratch"]
 pub static mut IPC: Ipc = Ipc::new();
 
 // TODO: no copy+paste of address

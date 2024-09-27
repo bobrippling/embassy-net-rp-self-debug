@@ -49,11 +49,11 @@ struct Ipc {
 // from RP2040.yaml, we should live in the given memory range along with the block of memory to flash,
 // but not our stack, which lives in core1 stack's zone
 // FIXME: no hardcoding
-const IPC: *mut Ipc = 0x20010800 as _;
+static mut IPC: Option<*mut Ipc> = None;
 
 #[link_section = ".text"]
 fn ipc(what: IpcWhat, regs: &[usize; 3]) {
-    let ipc = unsafe { &mut *IPC };
+    let ipc = unsafe { get_ipc() };
 
     ipc.regs.copy_from_slice(regs);
     ipc.what.store(what as u8, Ordering::SeqCst);
@@ -61,7 +61,7 @@ fn ipc(what: IpcWhat, regs: &[usize; 3]) {
 
 #[link_section = ".text"]
 fn ipc_wait() -> ! {
-    let ipc = unsafe { &*IPC };
+    let ipc: &Ipc = unsafe { get_ipc() };
 
     while ipc.what.load(Ordering::Relaxed) > 0 {
     }
@@ -123,6 +123,35 @@ fn erase_sector(address: usize) -> ! {
     );
 
     ipc_wait()
+}
+
+unsafe fn get_ipc() -> &'static mut Ipc {
+    unsafe {
+        &mut **IPC.get_or_insert_with(scan_mem_for_ipc)
+    }
+}
+
+fn scan_mem_for_ipc() -> *mut Ipc {
+    let start = 0x20000000;
+    let end = 0x20042000;
+
+    let target_bytes = b"SELFDBG_SIG_749\0"; // FIXME: needs reloc/loader
+
+    return find(start, end, target_bytes) as _;
+
+    fn find(start: usize, end: usize, target: &[u8]) -> usize {
+        for ptr in start..end {
+            let candidate = unsafe {
+                core::slice::from_raw_parts(ptr as *const u8, target.len())
+            };
+
+            if candidate == target {
+                return ptr;
+            }
+        }
+
+        loop {} // panic
+    }
 }
 
 /*
