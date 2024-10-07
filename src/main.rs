@@ -42,6 +42,7 @@ static EXECUTOR1: StaticCell<Executor> = StaticCell::new();
 #[cortex_m_rt::entry]
 fn main() -> ! {
     info!("Start");
+    flash_wrangler::init();
     let p = embassy_rp::init(Default::default());
 
     let executor0 = EXECUTOR0.init(Executor::new());
