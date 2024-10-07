@@ -44,6 +44,9 @@ fn main() -> ! {
     info!("Start");
     let p = embassy_rp::init(Default::default());
 
+    let executor0 = EXECUTOR0.init(Executor::new());
+    executor0.run(|spawner| unwrap!(spawner.spawn(led_task())));
+
     spawn_core1(
         p.CORE1,
         unsafe { &mut *core::ptr::addr_of_mut!(CORE1_STACK) },
@@ -66,6 +69,26 @@ fn main() -> ! {
 
     let executor0 = EXECUTOR0.init(Executor::new());
     executor0.run(|spawner| unwrap!(spawner.spawn(core0_task(spawner, spi, p.PIN_23))))
+}
+
+#[embassy_executor::task]
+async fn led_task() {
+    use embassy_time::Timer;
+
+    //let p = unsafe { embassy_rp::Peripherals::steal() };
+
+    use embedded_hal::delay::DelayNs;
+    let mut delay = embassy_time::Delay;
+    //let mut delay = cortex_m::delay::Delay::new(p.SYST, clocks.system_clock.freq().to_Hz());
+
+    loop {
+        info!("high");
+        delay.delay_ms(500);
+        //Timer::after_millis(100).await;
+
+        info!("low");
+        //Timer::after_millis(100).await;
+    }
 }
 
 #[embassy_executor::task]

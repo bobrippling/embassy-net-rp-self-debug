@@ -1,7 +1,7 @@
 MEMORY {
     BOOT2 : ORIGIN = 0x10000000, LENGTH = 0x100
     /* FLASH : ORIGIN = 0x10000100, LENGTH = 2048K - 0x100 */
-    RAM   : ORIGIN = 0x20000000, LENGTH = 256K /* RAM end: 0x20040000 */
+    RAM   : ORIGIN = 0x20000100, LENGTH = 256K /* RAM end: 0x20040000 */
 
     /* copied from embassy/examples/boot/bootloader/rp/memory.x */
     /*BOOTLOADER       : ORIGIN = 0x10000100, LENGTH = 24K /_* bootloader lives here, can drop to 8k *_/*/
@@ -9,6 +9,16 @@ MEMORY {
     FLASH /*ACTIVE*/ : ORIGIN = 0x10007000, LENGTH = 512K
     DFU              : ORIGIN = 0x10087000, LENGTH = 516K
 }
+
+/* EXTERN(BOOT2_FIRMWARE) */
+
+/* SECTIONS { ditched this to avoid writing over the bootloader */
+/*     /1* ### Boot loader *1/ */
+/*     .boot2 ORIGIN(BOOT2) : */
+/*     { */
+/*         KEEP(*(.boot2)); */
+/*     } > BOOT2 */
+/* } INSERT BEFORE .text; */
 
 SECTIONS {
     /* ensure probe_rs_scratch section is at a fixed address */
