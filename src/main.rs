@@ -10,22 +10,20 @@ mod swj;
 mod swo;
 mod flash;
 
-use cortex_m::asm::nop;
 use cyw43_pio::PioSpi;
 use dap::dap::DapVersion;
 use dap_leds::DapLeds;
 use defmt::*;
-use embassy_executor::{Executor, Spawner};
+use embassy_executor::Spawner;
 use embassy_net::tcp::TcpSocket;
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::multicore::{spawn_core1, Stack};
 use embassy_rp::pac::SYSCFG;
-use embassy_rp::peripherals::{DMA_CH0, PIN_23, PIN_25, PIO0};
+use embassy_rp::peripherals::PIO0;
 use embassy_rp::pio::{InterruptHandler, Pio};
 use embassy_rp::{bind_interrupts, clocks};
 use embassy_time::Duration;
 use embedded_io_async::Write;
-use static_cell::StaticCell;
 use swj::Swj;
 use swo::Swo;
 
@@ -36,11 +34,9 @@ bind_interrupts!(struct Irqs0 {
 });
 
 static mut CORE1_STACK: Stack<4096> = Stack::new();
-static EXECUTOR0: StaticCell<Executor> = StaticCell::new();
-static EXECUTOR1: StaticCell<Executor> = StaticCell::new();
 
-#[cortex_m_rt::entry]
-fn main() -> ! {
+#[embassy_executor::main]
+async fn main(spawner: Spawner) {
     info!("Start");
     flash::init();
 
@@ -50,8 +46,9 @@ fn main() -> ! {
         p.CORE1,
         unsafe { &mut *core::ptr::addr_of_mut!(CORE1_STACK) },
         move || {
-            let executor1 = EXECUTOR1.init(Executor::new());
-            executor1.run(|spawner| unwrap!(spawner.spawn(core1_task())));
+            loop {
+                cortex_m::asm::nop();
+            }
         },
     );
 
@@ -66,16 +63,6 @@ fn main() -> ! {
         p.DMA_CH0,
     );
 
-    let executor0 = EXECUTOR0.init(Executor::new());
-    executor0.run(|spawner| unwrap!(spawner.spawn(core0_task(spawner, spi, p.PIN_23))))
-}
-
-#[embassy_executor::task]
-async fn core0_task(
-    spawner: Spawner,
-    spi: PioSpi<'static, PIN_25, PIO0, 0, DMA_CH0>,
-    pin_23: PIN_23,
-) {
     info!("init'ing network...");
     let stack = network::init_network(
         spawner,
@@ -84,7 +71,7 @@ async fn core0_task(
         env!("WIFI_PASSPHRASE"),
         network::Address::Dhcp,
         spi,
-        Output::new(pin_23, Level::Low),
+        Output::new(p.PIN_23, Level::Low),
     )
     .await;
 
@@ -152,12 +139,5 @@ async fn core0_task(
         dap.suspend();
         socket.abort();
         let _ = socket.flush().await;
-    }
-}
-
-#[embassy_executor::task]
-async fn core1_task() {
-    loop {
-        nop();
     }
 }
