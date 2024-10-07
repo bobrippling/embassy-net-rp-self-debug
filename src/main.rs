@@ -15,17 +15,17 @@ use cyw43_pio::PioSpi;
 use dap::dap::DapVersion;
 use dap_leds::DapLeds;
 use defmt::*;
-use embassy_executor::{Executor, Spawner};
+use embassy_executor::{/*Executor,*/ Spawner};
 use embassy_net::tcp::TcpSocket;
 use embassy_rp::gpio::{Level, Output};
-use embassy_rp::multicore::{spawn_core1, Stack};
+// use embassy_rp::multicore::{spawn_core1, Stack};
 use embassy_rp::pac::SYSCFG;
 use embassy_rp::peripherals::{DMA_CH0, PIN_23, PIN_25, PIO0};
 use embassy_rp::pio::{InterruptHandler, Pio};
 use embassy_rp::{bind_interrupts, clocks};
 use embassy_time::Duration;
 use embedded_io_async::Write;
-use static_cell::StaticCell;
+// use static_cell::StaticCell;
 use swj::Swj;
 use swo::Swo;
 
@@ -35,27 +35,23 @@ bind_interrupts!(struct Irqs0 {
     PIO0_IRQ_0 => InterruptHandler<PIO0>;
 });
 
-static mut CORE1_STACK: Stack<4096> = Stack::new();
-static EXECUTOR0: StaticCell<Executor> = StaticCell::new();
-static EXECUTOR1: StaticCell<Executor> = StaticCell::new();
-
-#[cortex_m_rt::entry]
-fn main() -> ! {
+#[embassy_executor::main]
+async fn main(spawner: Spawner) -> ! {
     info!("Start");
     flash_wrangler::init();
     let p = embassy_rp::init(Default::default());
 
-    let executor0 = EXECUTOR0.init(Executor::new());
-    executor0.run(|spawner| unwrap!(spawner.spawn(led_task())));
+    // let executor0 = EXECUTOR0.init(Executor::new());
+    // executor0.run(|spawner| unwrap!(spawner.spawn(led_task())));
 
-    spawn_core1(
-        p.CORE1,
-        unsafe { &mut *core::ptr::addr_of_mut!(CORE1_STACK) },
-        move || {
-            let executor1 = EXECUTOR1.init(Executor::new());
-            executor1.run(|spawner| unwrap!(spawner.spawn(core1_task())));
-        },
-    );
+    // spawn_core1(
+    //     p.CORE1,
+    //     unsafe { &mut *core::ptr::addr_of_mut!(CORE1_STACK) },
+    //     move || {
+    //         let executor1 = EXECUTOR1.init(Executor::new());
+    //         executor1.run(|spawner| unwrap!(spawner.spawn(core1_task())));
+    //     },
+    // );
 
     let mut pio = Pio::new(p.PIO0, Irqs0);
     let spi = PioSpi::new(
@@ -68,36 +64,35 @@ fn main() -> ! {
         p.DMA_CH0,
     );
 
-    let executor0 = EXECUTOR0.init(Executor::new());
-    executor0.run(|spawner| unwrap!(spawner.spawn(core0_task(spawner, spi, p.PIN_23))))
+    core0_task(spawner, spi, p.PIN_23).await
 }
 
-#[embassy_executor::task]
-async fn led_task() {
-    use embassy_time::Timer;
+//#[embassy_executor::task]
+//async fn led_task() {
+//    use embassy_time::Timer;
 
-    //let p = unsafe { embassy_rp::Peripherals::steal() };
+//    //let p = unsafe { embassy_rp::Peripherals::steal() };
 
-    use embedded_hal::delay::DelayNs;
-    let mut delay = embassy_time::Delay;
-    //let mut delay = cortex_m::delay::Delay::new(p.SYST, clocks.system_clock.freq().to_Hz());
+//    use embedded_hal::delay::DelayNs;
+//    let mut delay = embassy_time::Delay;
+//    //let mut delay = cortex_m::delay::Delay::new(p.SYST, clocks.system_clock.freq().to_Hz());
 
-    loop {
-        info!("high");
-        delay.delay_ms(500);
-        //Timer::after_millis(100).await;
+//    loop {
+//        info!("high");
+//        delay.delay_ms(500);
+//        //Timer::after_millis(100).await;
 
-        info!("low");
-        //Timer::after_millis(100).await;
-    }
-}
+//        info!("low");
+//        //Timer::after_millis(100).await;
+//    }
+//}
 
-#[embassy_executor::task]
+//#[embassy_executor::task]
 async fn core0_task(
     spawner: Spawner,
     spi: PioSpi<'static, PIN_25, PIO0, 0, DMA_CH0>,
     pin_23: PIN_23,
-) {
+) -> ! {
     info!("init'ing network...");
     let stack = network::init_network(
         spawner,

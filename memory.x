@@ -24,8 +24,8 @@ SECTIONS {
     /* ensure probe_rs_scratch section is at a fixed address */
     .probe_rs_scratch 0x2000e000 (NOLOAD) : {
         KEEP(*(.probe_rs_scratch));
-        /* . = ALIGN(4); */
-        /* __escratch = .; */
+        . = ALIGN(4);
+        __escratch = .;
     } > RAM
 } INSERT BEFORE .uninit;
 
