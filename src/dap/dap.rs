@@ -673,6 +673,7 @@ where
         }
     }
 
+    //#[optimize(none)]
     async fn process_transfer_block<'b>(
         &mut self,
         mut req: Request<'b>,
@@ -760,6 +761,7 @@ where
                     } else {
                         // Handle repeated register writes
                         let write_value = req.next_u32();
+                        // bug here
                         let result = swd
                             .write(self.swd_wait_retries, apndp, a, write_value)
                             .await;

@@ -1,5 +1,5 @@
 mod ipc;
-mod thunk;
+pub mod thunk;
 pub mod monitor;
 
 pub fn init() {

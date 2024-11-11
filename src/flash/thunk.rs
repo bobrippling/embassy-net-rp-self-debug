@@ -1,18 +1,29 @@
 #![allow(static_mut_refs)]
 
 use core::sync::atomic::Ordering;
-use defmt::{info, debug};
+use defmt::info;
 
 use super::ipc::IpcWhat;
 
 #[used]
 #[link_section = ".ipc_thunk"]
-static mut ALGO_THUNK: [extern "C" fn(usize, usize, usize) -> !; 4] = [
+pub static mut ALGO_THUNK: [extern "C" fn(usize, usize, usize) -> !; 4] = [
     on_init,
     uninit,
     program_page,
     erase_sector,
 ];
+
+macro_rules! dump_thunk {
+    () => {
+        defmt::info!(
+            "{}:{}: thunk = {:?}",
+            file!(),
+            line!(),
+            unsafe { ALGO_THUNK }
+        );
+    };
+}
 
 #[allow(dead_code)]
 #[repr(C)]
@@ -45,22 +56,30 @@ pub enum Operation {
 pub fn init() {
     unsafe {
         // FIXME: init ram via memory.x
-        ALGO_THUNK = [on_init, uninit, program_page, erase_sector];
-        debug!("flash::thunk::init, ALGO_THUNK is {:?}", ALGO_THUNK);
+        ALGO_THUNK = [
+            on_init,
+            uninit,
+            program_page,
+            erase_sector,
+        ];
+        defmt::warn!("flash::thunk::init, ALGO_THUNK is {:?}", ALGO_THUNK);
     }
 }
 
 extern "C" fn on_init(address: usize, clock_or_zero: usize, op: usize /* Operation */) -> ! {
+    dump_thunk!();
     info!(
         "flash algo, executing on_init(address={:#x}, clk_or_zero={}, op={})",
         address,
         clock_or_zero,
         op
     );
+    dump_thunk!();
     ipc(
         IpcWhat::Init,
         &[address, clock_or_zero, op as _]
     );
+    dump_thunk!();
     info!("flash algo, posted IPC, waiting...");
 
     ipc_wait()
@@ -106,19 +125,25 @@ extern "C" fn erase_sector(address: usize, _: usize, _: usize) -> ! {
 fn ipc(what: IpcWhat, regs: &[usize; 3]) {
     let ipc = unsafe { &mut super::ipc::IPC };
 
+    dump_thunk!();
     ipc.regs.copy_from_slice(regs); // FIXME: could use a &[usize] here / in callers
+    dump_thunk!();
     ipc.what.store(what as u8, Ordering::SeqCst);
+    dump_thunk!();
 }
 
 fn ipc_wait() -> ! {
     let ipc = unsafe { &super::ipc::IPC };
 
+    dump_thunk!();
     cortex_m::interrupt::free(|_| {
         while ipc.what.load(Ordering::Relaxed) > 0 {
         }
     });
 
+    dump_thunk!();
     info!("flash algo, got fin, exiting...");
+    dump_thunk!();
     let exit_code = 0;
     halt(exit_code)
 }

@@ -5,6 +5,7 @@ edition = "2021"
 
 [profile.release]
 debug = 2
+opt-level = 1
 
 [features]
 default = ["defmt", "usb-hs", "flash-dry-run"]

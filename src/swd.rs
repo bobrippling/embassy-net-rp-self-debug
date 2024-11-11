@@ -22,7 +22,7 @@ impl Swd {
     }
 
     pub async fn delay_half_period(&mut self) {
-        // Keep async so that we can swap back to embassy-time impl 
+        // Keep async so that we can swap back to embassy-time impl
         // if we can work out what's going wrong. Although this is
         // temporary until we use PIO anyway.
         let mut delay = Delay::new(
@@ -86,7 +86,9 @@ impl dap::swd::Swd<Swj> for Swd {
         a: dap::swd::DPRegister,
         data: u32,
     ) -> dap::swd::Result<()> {
-        trace!(
+        // bug here
+        use defmt::debug;
+        debug!(
             "SWD write, apndp: {}, addr: {}, data: 0x{:x}",
             apndp,
             a,
@@ -95,16 +97,16 @@ impl dap::swd::Swd<Swj> for Swd {
 
         // Send request
         let req = dap::swd::make_request(apndp, dap::swd::RnW::W, a);
-        trace!("SWD tx request");
+        debug!("SWD tx request");
         self.tx8(req).await;
 
         // Read ack, 1 clock for turnaround and 3 for ACK and 1 for turnaround
-        trace!("SWD rx ack");
+        debug!("SWD rx ack");
         let ack = (self.rx5().await >> 1) & 0b111;
         match dap::swd::Ack::try_ok(ack as u8) {
-            Ok(_) => trace!("    ack ok"),
+            Ok(_) => debug!("    ack ok"),
             Err(e) => {
-                trace!("    ack err: {}, data: {:b}", e, ack);
+                debug!("    ack err: {}, data: {:b}", e, ack);
                 // On non-OK ACK, target has released the bus but
                 // is still expecting a turnaround clock before
                 // the next request, and we need to take over the bus.
@@ -114,7 +116,7 @@ impl dap::swd::Swd<Swj> for Swd {
         }
 
         // Send data and parity
-        trace!("SWD tx data");
+        debug!("SWD tx data");
         let parity = data.count_ones() & 1 == 1;
         self.send_data(data, parity).await;
 

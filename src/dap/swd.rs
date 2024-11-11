@@ -129,6 +129,7 @@ pub trait Swd<DEPS>: From<DEPS> {
         data: u32,
     ) -> Result<()> {
         for _ in 0..wait_retries {
+            // bug here
             match self.write_inner(apndp, a, data).await {
                 Err(Error::AckWait) => continue,
                 x => return x,

@@ -74,6 +74,18 @@ fn main() -> ! {
     executor0.run(|spawner| unwrap!(spawner.spawn(core0_task(spawner, spi, p.PIN_23))))
 }
 
+macro_rules! dump_thunk {
+    () => {
+        defmt::info!(
+            "{}:{}: thunk = {:?}",
+            file!(),
+            line!(),
+            unsafe { flash::thunk::ALGO_THUNK }
+        );
+    };
+}
+
+
 #[embassy_executor::task]
 async fn core0_task(
     spawner: Spawner,
@@ -105,8 +117,11 @@ async fn core0_task(
     let mut dap = dap::dap::Dap::new(swj, DapLeds::new(), Swo::new(), "VERSION");
     info!("dap setup");
 
+    dump_thunk!();
+
     loop {
         info!("Waiting for connection");
+        dump_thunk!();
         if socket.accept(1234).await.is_err() {
             warn!("Failed to accept connection");
             continue;
@@ -118,6 +133,7 @@ async fn core0_task(
             let mut request_buffer = [0; dap::dap::DAP2_PACKET_SIZE as usize];
 
             trace!("Waiting for request");
+            dump_thunk!();
 
             let n = match socket.read(&mut request_buffer).await {
                 Ok(0) => {
