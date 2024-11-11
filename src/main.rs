@@ -9,6 +9,7 @@ mod swd;
 mod swj;
 mod swo;
 mod flash;
+use flash::monitor;
 
 use cortex_m::asm::nop;
 use cyw43_pio::PioSpi;
@@ -105,6 +106,8 @@ async fn core0_task(
     let mut dap = dap::dap::Dap::new(swj, DapLeds::new(), Swo::new(), "VERSION");
     info!("dap setup");
 
+    let mut apply_flash_on_disconnect = false;
+
     loop {
         info!("Waiting for connection");
         if socket.accept(1234).await.is_err() {
@@ -114,20 +117,21 @@ async fn core0_task(
 
         info!("Connected");
 
-        loop {
+        let success = loop {
             let mut request_buffer = [0; dap::dap::DAP2_PACKET_SIZE as usize];
 
             trace!("Waiting for request");
 
             let n = match socket.read(&mut request_buffer).await {
                 Ok(0) => {
+                    // TODO
                     warn!("read EOF");
-                    break;
+                    break true;
                 }
                 Ok(n) => n,
                 Err(e) => {
                     warn!("read error: {:?}", e);
-                    break;
+                    break false;
                 }
             };
 
@@ -140,7 +144,9 @@ async fn core0_task(
 
             // possibly move this to a polling task
             // or just use proper IPC / SIO.fifo
-            flash::monitor::handle_pending_flash();
+            if let Some(monitor::FlashMessage::Complete) = monitor::handle_pending_flash() {
+                apply_flash_on_disconnect = true;
+            }
 
             trace!("Responding with {} bytes", n);
 
@@ -148,14 +154,19 @@ async fn core0_task(
                 Ok(()) => {}
                 Err(e) => {
                     warn!("write error: {:?}", e);
-                    break;
+                    break false;
                 }
             };
-        }
+        };
 
         dap.suspend();
         socket.abort();
         let _ = socket.flush().await;
+
+        if success && apply_flash_on_disconnect {
+            flash::apply();
+            // unreachable
+        }
     }
 }
 
