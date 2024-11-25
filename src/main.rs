@@ -97,7 +97,7 @@ async fn core0_task(
     flash: Flash<'static, FLASH, Async, FLASH_SIZE>,
 ) -> ! {
     info!("init'ing network...");
-    let stack = network::init_network(
+    let (stack, mut cyw43_control) = network::init_network(
         spawner,
         network::Mode::Station,
         env!("WIFI_SSID"),
@@ -135,6 +135,7 @@ async fn core0_task(
             continue;
         }
 
+        // cyw43_control.gpio_set(0, true).await;
         info!("Connected");
 
         loop {
@@ -178,7 +179,12 @@ async fn core0_task(
         socket.abort();
 
         if let embassy_net::tcp::State::CloseWait = socket.state() {
-            let _ = socket.flush().await;
+            match socket.flush().await {
+                Ok(()) => {}
+                Err(e @ embassy_net::tcp::Error::ConnectionReset) => {
+                    error!("socket.flush: {}", e);
+                }
+            }
         }
 
         if let embassy_net::tcp::State::Closed = socket.state() {
@@ -186,6 +192,8 @@ async fn core0_task(
         } else {
             warn!("Failed to close connection");
         }
+
+        // cyw43_control.gpio_set(0, false).await;
     }
 }
 

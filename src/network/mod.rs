@@ -1,3 +1,4 @@
+use cyw43::Control;
 use cyw43_pio::PioSpi;
 use defmt::{error, info};
 use embassy_executor::Spawner;
@@ -32,7 +33,7 @@ pub async fn init_network(
     ip_address: Address,
     pio_spi: PioSpi<'static, PIO0, 0, DMA_CH0>,
     pwr: Output<'static>,
-) -> &'static Stack<cyw43::NetDriver<'static>> {
+) -> (&'static Stack<cyw43::NetDriver<'static>>, Control<'static>) {
     static STATE: StaticCell<cyw43::State> = StaticCell::new();
     let state = STATE.init(cyw43::State::new());
 
@@ -100,7 +101,7 @@ pub async fn init_network(
 
     info!("network initialized {}", stack.config_v4().unwrap().address);
 
-    stack
+    (stack, control)
 }
 
 #[embassy_executor::task]
