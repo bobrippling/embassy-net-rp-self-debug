@@ -164,7 +164,8 @@ async fn core0_task(
         let _ = socket.flush().await;
 
         if success && apply_flash_on_disconnect {
-            flash::apply();
+            info!("would apply flash (DRY RUN)");
+            //flash::apply();
             // unreachable
         }
     }

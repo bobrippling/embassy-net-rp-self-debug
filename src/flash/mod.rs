@@ -8,6 +8,7 @@ pub fn init() {
     thunk::init();
 }
 
+#[allow(dead_code)]
 pub fn apply() -> ! {
     use core::cell::RefCell;
     use embassy_sync::blocking_mutex::Mutex;
@@ -42,6 +43,13 @@ pub fn apply() -> ! {
     // and boot us. we reset to initiate this:
 
     info!("resetting...");
+
+    // hack? wait a little bit for defmt
+    let mut delay = cortex_m::delay::Delay::new(
+        unsafe { cortex_m::Peripherals::steal() }.SYST,
+        embassy_rp::clocks::clk_sys_freq(),
+    );
+    delay.delay_ms(1000);
 
     cortex_m::peripheral::SCB::sys_reset()
 }

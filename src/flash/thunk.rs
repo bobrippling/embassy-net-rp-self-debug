@@ -1,11 +1,13 @@
 #![allow(static_mut_refs)]
 
-use core::{mem::size_of, sync::atomic::Ordering};
+use core::{arch::asm, mem::size_of, sync::atomic::Ordering};
 use defmt::info;
 
 use super::ipc::IpcWhat;
 
-static ALGO_THUNK: [extern "C" fn(usize, usize, usize) -> usize; 4] =
+type Thunk = [extern "C" fn(usize, usize, usize) -> usize; 4];
+
+static ALGO_THUNK: Thunk =
     [on_init, uninit, program_page, erase_sector];
 
 #[allow(dead_code)]
@@ -36,13 +38,19 @@ pub enum Operation {
 //     },
 // }
 
+fn thunk_ptr() -> *mut Thunk {
+    let size = size_of::<extern "C" fn(usize, usize, usize) -> usize>();
+    let base_address: usize = 0x21040000 - size * ALGO_THUNK.len();
+    base_address as _
+}
+
 pub fn init() {
     // TODO: Convert this to linker magic
-    let size = size_of::<extern "C" fn(usize, usize, usize) -> usize>();
-    let src = ALGO_THUNK.as_ptr();
-    let base_address: usize = 0x21040000 - size * ALGO_THUNK.len();
+    let base_address = thunk_ptr();
+    info!("writing thunk to {:#x}", base_address);
+
     unsafe {
-        core::ptr::copy_nonoverlapping(src, base_address as *mut _, ALGO_THUNK.len());
+        core::ptr::write(base_address, ALGO_THUNK)
     }
 }
 
@@ -80,9 +88,50 @@ extern "C" fn program_page(address: usize, byte_len: usize, buffer: usize) -> us
     ipc_wait()
 }
 
+fn raise_to_probe_rs(x: i32) {
+    unsafe {
+        asm!(
+            "bkpt #0000",
+            in("r0") x,
+        );
+    }
+}
+
 extern "C" fn erase_sector(address: usize, _: usize, _: usize) -> usize {
     info!("flash algo, executing erase_sector(address={:#x})", address);
-    ipc(IpcWhat::Erase, &[address, 0, 0]);
+
+    info!("sp = {}", {
+        let sp = unsafe {
+            let mut sp: *const ();
+            asm!("mov {x}, sp", x = out(reg) sp);
+            sp
+        };
+        sp
+    });
+
+    info!("ipc: {:?}", {
+        let r = unsafe { &super::ipc::IPC };
+        (
+            r.what.load(Ordering::Relaxed),
+            r.regs,
+        )
+    });
+
+    let mut delay = cortex_m::delay::Delay::new(
+        unsafe { cortex_m::Peripherals::steal() }.SYST,
+        embassy_rp::clocks::clk_sys_freq(),
+    );
+    delay.delay_ms(10000);
+
+    // raise_to_probe_rs(1234);
+    //ipc(IpcWhat::Erase, &[address, 0, 0]); // problem is here
+    {
+        let ipc = unsafe { &mut super::ipc::IPC };
+
+        ipc.regs.copy_from_slice(&[address, 0, 0]);
+        ipc.what.store(IpcWhat::Erase as u8, Ordering::SeqCst);
+    }
+    raise_to_probe_rs(5678);
 
     ipc_wait()
 }
@@ -91,7 +140,7 @@ fn ipc(what: IpcWhat, regs: &[usize; 3]) {
     let ipc = unsafe { &mut super::ipc::IPC };
 
     ipc.regs.copy_from_slice(regs); // FIXME: could use a &[usize] here / in callers
-    ipc.what.store(what as u8, Ordering::SeqCst);
+    ipc.what.store(what as u8, Ordering::SeqCst); // FIXME: Release
 }
 
 fn ipc_wait() -> usize {
@@ -100,6 +149,8 @@ fn ipc_wait() -> usize {
     cortex_m::interrupt::free(|_| while ipc.what.load(Ordering::Relaxed) > 0 {});
 
     info!("flash algo, got fin, exiting...");
+
+    info!("thunk: {:?}", unsafe { *thunk_ptr() });
 
     0
 }
