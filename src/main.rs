@@ -135,7 +135,7 @@ async fn core0_task(
             continue;
         }
 
-        // cyw43_control.gpio_set(0, true).await;
+        cyw43_control.gpio_set(0, true).await;
         info!("Connected");
 
         loop {
@@ -193,7 +193,7 @@ async fn core0_task(
             warn!("Failed to close connection");
         }
 
-        // cyw43_control.gpio_set(0, false).await;
+        cyw43_control.gpio_set(0, false).await;
     }
 }
 
