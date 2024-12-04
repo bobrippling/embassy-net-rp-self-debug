@@ -125,8 +125,7 @@ async fn core0_task(
     let mut aligned = embassy_boot_rp::AlignedBuffer([0; 1]);
     let mut updater = BlockingFirmwareUpdater::new(config, &mut aligned.0);
 
-    // feels like we should be doing something like this here...
-    // updater.mark_booted().unwrap();
+    updater.mark_booted().unwrap();
 
     loop {
         info!("Waiting for connection");

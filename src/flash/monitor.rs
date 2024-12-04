@@ -36,11 +36,6 @@ pub fn handle_pending_flash<'a>(
                 ipc.regs[0], ipc.regs[1], ipc.regs[2],
             );
 
-            if ipc.regs[2] == Operation::Program as usize {
-                // avoid BadState
-                firmware_updater.mark_booted().unwrap();
-            }
-
             info!("init done");
         }
         Ok(Some(IpcWhat::Deinit)) => {
