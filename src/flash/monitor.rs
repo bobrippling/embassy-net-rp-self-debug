@@ -39,12 +39,12 @@ pub fn handle_pending_flash<'a>(
             info!("init done");
         }
         Ok(Some(IpcWhat::Deinit)) => {
-            info!("found deinit({:#x}), deinitialising...", ipc.regs[0],);
+            info!("found deinit({:#x}), deinitialising...", ipc.regs[0]);
 
-            info!("deinit done");
-            if ipc.regs[0] == Operation::Program as usize {
+            let op = Operation::try_from(ipc.regs[0]);
+            if let Ok(op @ Operation::Program) = op {
                 // all done, laters
-                info!("deinit(Operation::Program) detected, finalising...");
+                info!("deinit({}) detected, finalising...", op);
                 firmware_updater.mark_updated().unwrap();
                 info!("marked bootloader state as updated");
                 // SAFETY: YOLO
@@ -62,24 +62,30 @@ pub fn handle_pending_flash<'a>(
             #[cfg(not(feature = "flash-dry-run"))]
             {
                 let [addr, count, data] = ipc.regs;
+                let orig_addr = addr;
 
                 let addr = flash_map_address(addr as u32);
                 let count = count as usize;
                 let data = data as *const u8;
 
                 let data = unsafe { core::slice::from_raw_parts(data, count) };
-                info!("programming {:#x} to {:#x}", addr, addr + count as u32);
+                info!(
+                    "programming {:#x} to {:#x} (mapped from {:#x})",
+                    addr,
+                    addr + count as u32,
+                    orig_addr,
+                );
                 firmware_updater
                     .write_firmware(addr as usize, data)
                     .unwrap();
             }
-
-            info!("program_page done");
+            #[cfg(feature = "flash-dry-run")]
+            {
+                defmt::warn!("skipping program: dry-run mode");
+            }
         }
         Ok(Some(IpcWhat::Erase)) => {
-            info!("found erase_sector({:#x}), erasing...", ipc.regs[0],);
-
-            info!("erase done");
+            info!("found erase_sector({:#x}), erasing (no-op)", ipc.regs[0]);
         }
         Err(v) => {
             error!("unknown ipc value {}", v);
