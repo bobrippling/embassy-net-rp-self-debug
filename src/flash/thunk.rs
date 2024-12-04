@@ -11,10 +11,24 @@ static ALGO_THUNK: [extern "C" fn(usize, usize, usize) -> usize; 4] =
 
 #[allow(dead_code)]
 #[repr(C)]
+#[derive(defmt::Format)]
 pub enum Operation {
     Erase = 1,
     Program = 2,
     Verify = 3,
+}
+
+impl TryFrom<usize> for Operation {
+    type Error = usize;
+
+    fn try_from(value: usize) -> Result<Self, Self::Error> {
+        Ok(match value {
+            v if v == Operation::Erase as usize => Operation::Erase,
+            v if v == Operation::Program as usize => Operation::Program,
+            v if v == Operation::Verify as usize => Operation::Verify,
+            v => return Err(v)
+        })
+    }
 }
 
 // #[repr(C)]
