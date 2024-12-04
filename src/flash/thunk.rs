@@ -1,7 +1,7 @@
 #![allow(static_mut_refs)]
 
 use core::{mem::size_of, sync::atomic::Ordering};
-use defmt::info;
+use defmt::{info, trace};
 use embassy_rp::pac;
 
 use super::ipc::IpcWhat;
@@ -68,17 +68,17 @@ extern "C" fn on_init(
 ) -> usize {
     info!(
         "flash algo, executing on_init(address={:#x}, clk_or_zero={}, op={})",
-        address, clock_or_zero, op
+        address, clock_or_zero, Operation::try_from(op),
     );
-    ipc(IpcWhat::Init, &[address, clock_or_zero, op as _]);
-    info!("flash algo, posted IPC, waiting...");
+    ipc(IpcWhat::Init, &[address, clock_or_zero, op]);
+    trace!("flash algo, posted IPC, waiting...");
 
     ipc_wait()
 }
 
 extern "C" fn uninit(op: usize /*Operation*/, _: usize, _: usize) -> usize {
-    info!("flash algo, executing uninit(op={})", op);
-    ipc(IpcWhat::Deinit, &[op as _, 0, 0]);
+    info!("flash algo, executing uninit(op={})", Operation::try_from(op));
+    ipc(IpcWhat::Deinit, &[op, 0, 0]);
 
     ipc_wait()
 }
@@ -135,7 +135,7 @@ fn ipc_wait() -> usize {
         }
     });
 
-    info!("flash algo, got fin, exiting...");
+    trace!("flash algo, got fin, exiting...");
 
     0
 }
