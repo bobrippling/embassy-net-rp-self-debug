@@ -131,14 +131,16 @@ async fn core0_task(
     updater.mark_booted().unwrap();
 
     loop {
+        cyw43_control.gpio_set(0, false).await;
         info!("Waiting for connection");
+
         if socket.accept(1234).await.is_err() {
             warn!("Failed to accept connection");
             continue;
         }
 
-        cyw43_control.gpio_set(0, true).await;
         info!("Connected");
+        cyw43_control.gpio_set(0, true).await;
 
         loop {
             let mut request_buffer = [0; dap_rs::usb::DAP2_PACKET_SIZE as usize];
@@ -194,8 +196,6 @@ async fn core0_task(
         } else {
             warn!("Failed to close connection");
         }
-
-        cyw43_control.gpio_set(0, false).await;
     }
 }
 
