@@ -86,9 +86,13 @@ pub async fn init_network(
                     .await;
 
                 match r {
-                    Ok(_) => break,
+                    Ok(()) => break,
                     Err(e) => {
-                        error!("couldn't join {}: status={}, retrying...", ssid, e.status);
+                        error!(
+                            "couldn't join {}: status={:?}, retrying...",
+                            ssid,
+                            defmt::Debug2Format(&e),
+                        );
                     }
                 }
             }
