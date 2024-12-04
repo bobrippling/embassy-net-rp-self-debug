@@ -125,6 +125,9 @@ async fn core0_task(
     let mut aligned = embassy_boot_rp::AlignedBuffer([0; 1]);
     let mut updater = BlockingFirmwareUpdater::new(config, &mut aligned.0);
 
+    if let Ok(state) = updater.get_state() {
+        info!("Bootloader state: {:?}", state);
+    }
     updater.mark_booted().unwrap();
 
     loop {
