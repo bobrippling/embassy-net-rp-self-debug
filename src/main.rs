@@ -5,7 +5,7 @@ mod dap;
 mod flash;
 mod network;
 
-use core::cell::RefCell;
+use core::{hint, cell::RefCell};
 
 use cortex_m::asm::nop;
 use cyw43_pio::PioSpi;
@@ -203,5 +203,6 @@ async fn core0_task(
 async fn core1_task() {
     loop {
         nop();
+        hint::spin_loop();
     }
 }
