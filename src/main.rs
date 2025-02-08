@@ -25,6 +25,8 @@ use embassy_time::{Duration, Ticker};
 use embedded_io_async::Write;
 use static_cell::StaticCell;
 
+use flash::monitor::MonitorRequest;
+
 use {defmt_rtt as _, panic_probe as _};
 
 bind_interrupts!(struct Irqs0 {
@@ -166,7 +168,10 @@ async fn core0_task(
 
             // possibly move this to a polling task
             // or just use proper IPC / SIO.fifo
-            flash::monitor::handle_pending_flash(&mut updater);
+            match flash::monitor::handle_pending_flash(&mut updater) {
+                MonitorRequest::None => {}
+                MonitorRequest::Reset => spawner.must_spawn(reset()),
+            }
 
             trace!("Responding with {} bytes", n);
 
@@ -205,4 +210,14 @@ async fn core1_task() {
         nop();
         hint::spin_loop();
     }
+}
+
+#[embassy_executor::task]
+async fn reset() {
+    let mut ticker = Ticker::every(Duration::from_secs(1));
+    ticker.next().await;
+
+    trace!("resetting...");
+
+    rom_data::reset_to_usb_boot(0, 1 | 2);
 }

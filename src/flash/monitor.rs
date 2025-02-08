@@ -5,10 +5,8 @@ use embassy_embedded_hal::flash::partition::BlockingPartition;
 use embassy_rp::{
     flash::{Async, Flash},
     peripherals::FLASH,
-    watchdog::Watchdog,
 };
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
-use embassy_time::Duration;
 
 use crate::{
     flash::{
@@ -18,18 +16,24 @@ use crate::{
     FLASH_SIZE,
 };
 
+pub enum MonitorRequest {
+    None,
+    Reset,
+}
+
 pub fn handle_pending_flash<'a>(
     firmware_updater: &mut BlockingFirmwareUpdater<
         'a,
         BlockingPartition<'a, NoopRawMutex, Flash<'a, FLASH, Async, FLASH_SIZE>>,
         BlockingPartition<'a, NoopRawMutex, Flash<'a, FLASH, Async, FLASH_SIZE>>,
     >,
-) {
+) -> MonitorRequest {
+    let mut req = MonitorRequest::None;
     #[allow(static_mut_refs)]
     let ipc = unsafe { &IPC };
 
     match ipc.read_what() {
-        Ok(None) => return,
+        Ok(None) => return req,
         Ok(Some(IpcWhat::Init)) => {
             info!(
                 "found init({:#x}, {:#x}, {:#x}), initialising...",
@@ -47,10 +51,7 @@ pub fn handle_pending_flash<'a>(
                 info!("deinit({}) detected, finalising...", op);
                 firmware_updater.mark_updated().unwrap();
                 info!("marked bootloader state as updated");
-                // SAFETY: YOLO
-                let p = unsafe { embassy_rp::Peripherals::steal() };
-                Watchdog::new(p.WATCHDOG).start(Duration::from_millis(1000));
-                info!("scheduled reset for 1 sec...");
+                req = MonitorRequest::Reset;
             }
         }
         Ok(Some(IpcWhat::Program)) => {
@@ -93,6 +94,7 @@ pub fn handle_pending_flash<'a>(
     }
 
     ipc.what.store(0, Ordering::SeqCst);
+    req
 }
 
 #[cfg(not(feature = "flash-dry-run"))]
